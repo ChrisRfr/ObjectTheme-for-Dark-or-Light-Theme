@@ -7,8 +7,8 @@
 ;       Source Name: ObjectTheme.pbi
 ;            Author: ChrisR
 ;     Creation Date: 2023-11-06
-; modification Date: 2025-01-08
-;           Version: 1.6.0
+; modification Date: 2025-02-07
+;           Version: 1.6.1
 ;        PB-Version: 5.73 - 6.10 x64/x86
 ;                OS: Windows Only
 ;             Forum: https://www.purebasic.fr/english/viewtopic.php?t=82890
@@ -222,7 +222,7 @@ Structure ObjectTheme_INFO
 EndStructure
 
 ; https://docs.microsoft.com/en-us/windows/win32/api/dwmapi/nf-dwmapi-dwmsetwindowattribute
-PrototypeC DwmSetWindowAttribute(hwnd, dwAttribute.l, *pvAttribute, cbAttribute.l)
+Prototype DwmSetWindowAttribute(hwnd, dwAttribute, pvAttribute, cbAttribute)
 
 Declare IsDarkColorOT(Color)
 Declare AccentColorOT(Color, AddColorValue)
@@ -1247,7 +1247,7 @@ EndMacro
 
 Procedure SetWindowThemeColor(*ObjectTheme.ObjectTheme_INFO, Attribute, Value, InitLevel = #True)
   Protected ReturnValue = #PB_Default
-  Protected DwmSetWindowAttribute.DwmSetWindowAttribute
+  Protected DwmSetWindowAttribute_.DwmSetWindowAttribute
   
   Select Attribute
     Case #PB_Gadget_BackColor
@@ -1257,19 +1257,21 @@ Procedure SetWindowThemeColor(*ObjectTheme.ObjectTheme_INFO, Attribute, Value, I
       *ObjectTheme\ObjectInfo\lBackColor = Value
       SetWindowColor(*ObjectTheme\PBGadget, Value)
       
-      CompilerIf #PB_Compiler_Version >= 600 And #PB_Compiler_Processor = #PB_Processor_x64
+      CompilerIf #PB_Compiler_Version >= 600
           If OSVersion() >= #PB_OS_Windows_11
             If OpenLibrary(0, "dwmapi")
               Protected.l TextColor, BackColor = *ObjectTheme\ObjectInfo\lBackColor
-              DwmSetWindowAttribute = GetFunction(0, "DwmSetWindowAttribute")  
-              DwmSetWindowAttribute(*ObjectTheme\IDGadget, #DWMWA_CAPTION_COLOR, @BackColor, SizeOf(BackColor))
-              DwmSetWindowAttribute(*ObjectTheme\IDGadget, #DWMWA_BORDER_COLOR,  @BackColor, SizeOf(BackColor))
-              If IsDarkColorOT(BackColor)
-                TextColor = #White
-              Else
-                TextColor = #Black
+              DwmSetWindowAttribute_ = GetFunction(0, "DwmSetWindowAttribute")  
+              If DwmSetWindowAttribute_
+                DwmSetWindowAttribute_(*ObjectTheme\IDGadget, #DWMWA_CAPTION_COLOR, @BackColor, SizeOf(BackColor))
+                DwmSetWindowAttribute_(*ObjectTheme\IDGadget, #DWMWA_BORDER_COLOR,  @BackColor, SizeOf(BackColor))
+                If IsDarkColorOT(BackColor)
+                  TextColor = #White
+                Else
+                  TextColor = #Black
+                EndIf
+                DwmSetWindowAttribute_(*ObjectTheme\IDGadget, #DWMWA_TEXT_COLOR, @TextColor, SizeOf(TextColor))
               EndIf
-              DwmSetWindowAttribute(*ObjectTheme\IDGadget, #DWMWA_TEXT_COLOR, @TextColor, SizeOf(TextColor))
               CloseLibrary(0)
             EndIf
           EndIf
@@ -1344,16 +1346,16 @@ Procedure SetWindowThemeColor(*ObjectTheme.ObjectTheme_INFO, Attribute, Value, I
       Next
       PopMapPosition(ObjectTheme())
       
-      CompilerIf #PB_Compiler_Version >= 600 And #PB_Compiler_Processor = #PB_Processor_x64 
+      CompilerIf #PB_Compiler_Version >= 600 
           If OSVersion() >= #PB_OS_Windows_10
             If OpenLibrary(0, "dwmapi")
-              DwmSetWindowAttribute = GetFunction(0, "DwmSetWindowAttribute")
-              DwmSetWindowAttribute(*ObjectTheme\IDGadget, #DWMWA_USE_IMMERSIVE_DARK_MODE, @Value, SizeOf(Value))
-              Protected ActiveWindow = GetActiveWindow()
-              ; To display the title bar with a light or dark theme for other non-active windows
-              If ActiveWindow <> -1 And ActiveWindow <> *ObjectTheme\PBGadget
-                SetActiveWindow(*ObjectTheme\PBGadget)
-                SetActiveWindow(ActiveWindow)
+              DwmSetWindowAttribute_ = GetFunction(0, "DwmSetWindowAttribute")
+              If DwmSetWindowAttribute_
+                DwmSetWindowAttribute_(*ObjectTheme\IDGadget, #DWMWA_USE_IMMERSIVE_DARK_MODE, @Value, SizeOf(Value))
+                If IsWindowVisible_(*ObjectTheme\IDGadget)
+                  HideWindow(*ObjectTheme\PBGadget, #True)
+                  HideWindow(*ObjectTheme\PBGadget, #False)
+                EndIf
               EndIf
               CloseLibrary(0)
             EndIf
@@ -1373,7 +1375,7 @@ EndProcedure
 Procedure AddWindowTheme(Window, *ObjectTheme.ObjectTheme_INFO, UpdateTheme = #False)
   _ProcedureReturnIfOT(Not IsWindow(Window)) 
   Protected ObjectType.s, ReturnValue
-  Protected DwmSetWindowAttribute.DwmSetWindowAttribute
+  Protected DwmSetWindowAttribute_.DwmSetWindowAttribute
   
   With *ObjectTheme
     If Not UpdateTheme
@@ -1406,19 +1408,21 @@ Procedure AddWindowTheme(Window, *ObjectTheme.ObjectTheme_INFO, UpdateTheme = #F
       EndIf
     CompilerEndIf
     
-    CompilerIf #PB_Compiler_Version >= 600 And #PB_Compiler_Processor = #PB_Processor_x64
+    CompilerIf #PB_Compiler_Version >= 600
       If OSVersion() >= #PB_OS_Windows_11
         If OpenLibrary(0, "dwmapi")
           Protected.l TextColor, BackColor = \ObjectInfo\lBackColor
-          DwmSetWindowAttribute = GetFunction(0, "DwmSetWindowAttribute")  
-          DwmSetWindowAttribute(*ObjectTheme\IDGadget, #DWMWA_CAPTION_COLOR, @BackColor, SizeOf(BackColor))
-          DwmSetWindowAttribute(*ObjectTheme\IDGadget, #DWMWA_BORDER_COLOR,  @BackColor, SizeOf(BackColor))
-          If IsDarkColorOT(BackColor)
-            TextColor = #White
-          Else
-            TextColor = #Black
+          DwmSetWindowAttribute_ = GetFunction(0, "DwmSetWindowAttribute")  
+          If DwmSetWindowAttribute_
+            DwmSetWindowAttribute_(*ObjectTheme\IDGadget, #DWMWA_CAPTION_COLOR, @BackColor, SizeOf(BackColor))
+            DwmSetWindowAttribute_(*ObjectTheme\IDGadget, #DWMWA_BORDER_COLOR,  @BackColor, SizeOf(BackColor))
+            If IsDarkColorOT(BackColor)
+              TextColor = #White
+            Else
+              TextColor = #Black
+            EndIf
+            DwmSetWindowAttribute_(*ObjectTheme\IDGadget, #DWMWA_TEXT_COLOR, @TextColor, SizeOf(TextColor))
           EndIf
-          DwmSetWindowAttribute(*ObjectTheme\IDGadget, #DWMWA_TEXT_COLOR, @TextColor, SizeOf(TextColor))
           CloseLibrary(0)
         EndIf
       EndIf
@@ -1428,12 +1432,14 @@ Procedure AddWindowTheme(Window, *ObjectTheme.ObjectTheme_INFO, UpdateTheme = #F
       If ThemeAttribute() = #PB_Default
         SetWindowThemeColor(*ObjectTheme, #PB_Gadget_DarkMode, #PB_Default)
       Else  
-        CompilerIf #PB_Compiler_Version >= 600 And #PB_Compiler_Processor = #PB_Processor_x64
+        CompilerIf #PB_Compiler_Version >= 600
           If OSVersion() >= #PB_OS_Windows_10
             If OpenLibrary(0, "dwmapi")
               Protected DarkMode = ThemeAttribute()
-              DwmSetWindowAttribute = GetFunction(0, "DwmSetWindowAttribute")  
-              DwmSetWindowAttribute(*ObjectTheme\IDGadget, #DWMWA_USE_IMMERSIVE_DARK_MODE, @DarkMode, SizeOf(DarkMode))
+              DwmSetWindowAttribute_ = GetFunction(0, "DwmSetWindowAttribute")  
+              If DwmSetWindowAttribute_
+                DwmSetWindowAttribute_(*ObjectTheme\IDGadget, #DWMWA_USE_IMMERSIVE_DARK_MODE, @DarkMode, SizeOf(DarkMode))
+              EndIf
               CloseLibrary(0)
             EndIf
           EndIf
@@ -4736,4 +4742,3 @@ CompilerIf #PB_Compiler_IsMainFile
   ForEver
   
 CompilerEndIf
-
